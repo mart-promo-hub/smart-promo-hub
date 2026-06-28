@@ -1,3 +1,0 @@
-export const handleNotification = (req: any, res: any) => {
-    res.json({ message: 'Notification handler' });
-};
