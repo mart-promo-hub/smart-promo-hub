@@ -1,6 +1,9 @@
-// تعريف بسيط بدون أخطاء
+import session from 'express-session';
+
 declare module 'express-session' {
     export interface SessionData {
-        currentUser: any;  // أي نوع من البيانات
+        currentUser: any;
     }
 }
+
+export default session;
