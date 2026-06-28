@@ -1,5 +1,3 @@
-export interface UserData {
-    id: string;
-    username: string;
-    email?: string;
-}
+export const handleUser = (req: any, res: any) => {
+    res.json({ message: 'User handler' });
+};
