@@ -7,7 +7,7 @@ const PI_CONFIG = {
   redirectUri: "https://smart-promo-hub.onrender.com/auth/pi/callback"
 };
 
-// دالة تسجيل الدخول عبر Pi
+// ==================== دالة تسجيل الدخول ====================
 const handlePiLogin = () => {
   const authUrl = `https://app.pi-network.com/authenticate?client_id=${PI_CONFIG.clientId}&redirect_uri=${encodeURIComponent(PI_CONFIG.redirectUri)}&response_type=code`;
   window.location.href = authUrl;
@@ -23,7 +23,7 @@ const INITIAL_CAMPAIGNS = [
 
 const GLOBAL_STATS = { reach: 127600, clicks: 6000, engagement: 3600, spent: 1216 };
 
-// ==================== مكون عرض الرسم البياني ====================
+// ==================== مكون الرسم البياني ====================
 const SimpleChart = ({ data, color, label }) => {
   const max = Math.max(...data, 1);
   const points = data.map((v, i) => `${i * 50},${200 - (v / max) * 180}`).join(' ');
@@ -50,7 +50,7 @@ function App() {
   const [aiText, setAiText] = useState('');
   const [balance, setBalance] = useState(10);
 
-  // ===== دالة توليد النصوص بالذكاء الاصطناعي (محاكاة) =====
+  // ===== توليد النصوص =====
   const generateAIText = (campaignName) => {
     const templates = [
       `🚀 اكتشف العرض الحصري! لا تفوّت فرصة الحصول على ${campaignName} بأفضل الأسعار. عروض محدودة وخصومات تصل إلى 50%! سارع بالحجز الآن. #عرض_حصري #تسوق #صفقة`,
@@ -67,7 +67,7 @@ function App() {
     setNewCampaign({ ...newCampaign, text });
   };
 
-  // ===== دوال إدارة الحملات =====
+  // ===== إدارة الحملات =====
   const addCampaign = () => {
     if (!newCampaign.name.trim()) return alert('⚠️ الرجاء إدخال اسم الحملة');
     if (newCampaign.budget <= 0) return alert('⚠️ الميزانية يجب أن تكون أكبر من صفر');
@@ -97,7 +97,6 @@ function App() {
     alert('✅ تم إنشاء الحملة بنجاح!');
   };
 
-  // ===== دالة حذف الحملة =====
   const deleteCampaign = (id) => {
     if (window.confirm('هل أنت متأكد من حذف هذه الحملة؟')) {
       setCampaigns(campaigns.filter(c => c.id !== id));
@@ -105,14 +104,12 @@ function App() {
     }
   };
 
-  // ===== دالة عرض النتائج =====
   const showResults = (id) => {
     const c = campaigns.find(c => c.id === id);
     if (!c) return alert('الحملة غير موجودة');
     alert(`📊 نتائج الحملة: ${c.name}\n\n📈 المشاهدات: ${c.impressions.toLocaleString()}\n🖱️ النقرات: ${c.clicks.toLocaleString()}\n📊 CTR: ${c.ctr}%\n❤️ التفاعل: ${c.engagement.toLocaleString()}\n🔄 التحويلات: ${c.conversions}\n💰 العائد (ROI): ${c.roi}%\n💵 الميزانية: ${c.budget} π`);
   };
 
-  // ===== دالة شراء باقة =====
   const buyPackage = (price) => {
     if (balance < price) return alert(`⚠️ رصيدك غير كافٍ! رصيدك الحالي: ${balance} π`);
     if (window.confirm(`هل تريد شراء الباقة بـ ${price} π؟`)) {
@@ -129,15 +126,13 @@ function App() {
     completed: campaigns.filter(c => c.status === 'منتهية').length,
   };
 
-  // ===== صفحات التطبيق =====
+  // ===== عرض الصفحات =====
   const renderPage = () => {
     switch (page) {
       case 'dashboard':
         return (
           <div>
             <h2>📊 لوحة التحكم</h2>
-            
-            {/* زر تسجيل الدخول عبر Pi في لوحة التحكم */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', marginBottom: '16px' }}>
               <span></span>
               <button 
@@ -158,7 +153,6 @@ function App() {
                 <span>⛓️</span> تسجيل الدخول بـ Pi
               </button>
             </div>
-
             <div className="stats-grid">
               <div className="stats-card">💰 الرصيد: {balance} π</div>
               <div className="stats-card">📌 إجمالي الحملات: {stats.total}</div>
@@ -170,7 +164,6 @@ function App() {
               <div className="stats-card">❤️ تفاعل: {GLOBAL_STATS.engagement.toLocaleString()}</div>
               <div className="stats-card">💰 إنفاق: {GLOBAL_STATS.spent} π</div>
             </div>
-
             <div className="stats-grid">
               <SimpleChart data={[120, 150, 180, 220, 260, 310, 400]} color="#6c5ce7" label="📈 المشاهدات" />
               <SimpleChart data={[40, 55, 70, 90, 110, 140, 180]} color="#ff6b6b" label="🖱️ النقرات" />
@@ -247,8 +240,6 @@ function App() {
           <div>
             <h2>⚙️ الإعدادات</h2>
             <div className="card">
-              
-              {/* قسم تسجيل الدخول عبر Pi */}
               <div style={{ background: '#1a1a2e', padding: '16px', borderRadius: '12px', marginBottom: '16px' }}>
                 <h3 style={{ color: '#6c5ce7' }}>🔐 تسجيل الدخول عبر Pi</h3>
                 <p style={{ fontSize: '14px', color: '#a7a9be' }}>استخدم حساب Pi الخاص بك لتسجيل الدخول إلى المنصة</p>
@@ -271,7 +262,6 @@ function App() {
                   <span>⛓️</span> تسجيل الدخول بـ Pi
                 </button>
               </div>
-
               <p>💰 رصيدك الحالي: <strong>{balance} π</strong></p>
               <button onClick={() => setBalance(balance + 5)} style={{ background: '#4ecdc4' }}>➕ إضافة 5 π (تجريبي)</button>
               <hr style={{ borderColor: '#6c5ce7', margin: '16px 0' }} />
