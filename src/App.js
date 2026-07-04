@@ -1,6 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import './index.css';
 
-// ==================== البيانات الثابتة ====================
+// ==================== إعدادات Pi Network ====================
+const PI_CONFIG = {
+  clientId: "-A4TB3A70xaV8msc-OzXbB_PMhCHqIu5KHbgr_BKS2o",
+  redirectUri: "https://smart-promo-hub.onrender.com/auth/pi/callback"
+};
+
+// دالة تسجيل الدخول عبر Pi
+const handlePiLogin = () => {
+  const authUrl = `https://app.pi-network.com/authenticate?client_id=${PI_CONFIG.clientId}&redirect_uri=${encodeURIComponent(PI_CONFIG.redirectUri)}&response_type=code`;
+  window.location.href = authUrl;
+};
+
+// ==================== البيانات الأولية ====================
 const INITIAL_CAMPAIGNS = [
   { id: 1, name: 'حملة العيد', type: 'نص', platform: 'فيسبوك', status: 'نشطة', budget: 500, spent: 320, reach: 45000, clicks: 2300, engagement: 1200, conversions: 45, impressions: 52000, ctr: 4.4, roi: 22, start: '2026-06-01', end: '2026-06-30' },
   { id: 2, name: 'عرض الصيف', type: 'صورة', platform: 'إنستغرام', status: 'مجدولة', budget: 300, spent: 0, reach: 0, clicks: 0, engagement: 0, conversions: 0, impressions: 0, ctr: 0, roi: 0, start: '2026-07-01', end: '2026-07-31' },
@@ -123,6 +136,29 @@ function App() {
         return (
           <div>
             <h2>📊 لوحة التحكم</h2>
+            
+            {/* زر تسجيل الدخول عبر Pi في لوحة التحكم */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', marginBottom: '16px' }}>
+              <span></span>
+              <button 
+                onClick={handlePiLogin} 
+                style={{ 
+                  background: '#6c5ce7', 
+                  padding: '8px 16px', 
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  color: 'white',
+                  cursor: 'pointer'
+                }}
+              >
+                <span>⛓️</span> تسجيل الدخول بـ Pi
+              </button>
+            </div>
+
             <div className="stats-grid">
               <div className="stats-card">💰 الرصيد: {balance} π</div>
               <div className="stats-card">📌 إجمالي الحملات: {stats.total}</div>
@@ -211,6 +247,31 @@ function App() {
           <div>
             <h2>⚙️ الإعدادات</h2>
             <div className="card">
+              
+              {/* قسم تسجيل الدخول عبر Pi */}
+              <div style={{ background: '#1a1a2e', padding: '16px', borderRadius: '12px', marginBottom: '16px' }}>
+                <h3 style={{ color: '#6c5ce7' }}>🔐 تسجيل الدخول عبر Pi</h3>
+                <p style={{ fontSize: '14px', color: '#a7a9be' }}>استخدم حساب Pi الخاص بك لتسجيل الدخول إلى المنصة</p>
+                <button 
+                  onClick={handlePiLogin} 
+                  style={{ 
+                    background: '#6c5ce7', 
+                    padding: '12px 24px', 
+                    fontSize: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    marginTop: '8px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    color: 'white',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <span>⛓️</span> تسجيل الدخول بـ Pi
+                </button>
+              </div>
+
               <p>💰 رصيدك الحالي: <strong>{balance} π</strong></p>
               <button onClick={() => setBalance(balance + 5)} style={{ background: '#4ecdc4' }}>➕ إضافة 5 π (تجريبي)</button>
               <hr style={{ borderColor: '#6c5ce7', margin: '16px 0' }} />
