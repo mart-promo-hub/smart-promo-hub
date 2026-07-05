@@ -81,7 +81,6 @@ app.post('/api/pay', async (req, res) => {
   }
 
   try {
-    // محاكاة عملية دفع ناجحة للاختبار
     const mockPayment = {
       success: true,
       transaction_id: 'txn_' + Date.now(),
