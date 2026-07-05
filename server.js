@@ -72,6 +72,30 @@ app.get('/auth/pi/callback', async (req, res) => {
   }
 });
 
+// ==================== مسار معالجة الدفع ====================
+app.post('/api/pay', async (req, res) => {
+  const { amount, memo, user_id } = req.body;
+
+  if (!amount || !user_id) {
+    return res.status(400).json({ error: 'المبلغ ومعرف المستخدم مطلوبان' });
+  }
+
+  try {
+    // محاكاة عملية دفع ناجحة للاختبار
+    const mockPayment = {
+      success: true,
+      transaction_id: 'txn_' + Date.now(),
+      amount: amount,
+      status: 'completed'
+    };
+
+    res.json(mockPayment);
+  } catch (error) {
+    console.error('❌ خطأ في الدفع:', error);
+    res.status(500).json({ error: 'فشلت عملية الدفع' });
+  }
+});
+
 // ==================== خدمة الملفات الثابتة ====================
 app.use(express.static(path.join(__dirname, 'build')));
 
