@@ -5,6 +5,10 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware to parse JSON and URL-encoded bodies
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 // ==================== إعدادات Pi Network ====================
 const PI_CONFIG = {
   clientId: "-A4TB3A70xaV8msc-OzXbB_PMhCHqIu5KHbgr_BKS2o",
@@ -93,6 +97,58 @@ app.post('/api/pay', async (req, res) => {
     console.error('❌ خطأ في الدفع:', error);
     res.status(500).json({ error: 'فشلت عملية الدفع' });
   }
+});
+
+// ==================== صفحة سياسة الخصوصية ====================
+app.get('/privacy-policy', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>سياسة الخصوصية</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; direction: rtl; max-width: 700px; margin: 0 auto; }
+          h1 { color: #6c5ce7; }
+          .btn { display: inline-block; padding: 10px 20px; background: #6c5ce7; color: white; text-decoration: none; border-radius: 8px; }
+        </style>
+      </head>
+      <body>
+        <h1>🔒 سياسة الخصوصية</h1>
+        <p>نحن في Smart Promo Hub نلتزم بحماية خصوصية مستخدمينا. لا نقوم بمشاركة بياناتك الشخصية مع أي طرف ثالث دون موافقتك الصريحة.</p>
+        <p>جميع البيانات التي نجمعها تُستخدم فقط لتحسين خدماتنا وتقديم تجربة مخصصة لك.</p>
+        <a href="/" class="btn">🚀 العودة إلى التطبيق</a>
+      </body>
+    </html>
+  `);
+});
+
+// ==================== صفحة شروط الخدمة ====================
+app.get('/terms-of-service', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>شروط الخدمة</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; direction: rtl; max-width: 700px; margin: 0 auto; }
+          h1 { color: #6c5ce7; }
+          .btn { display: inline-block; padding: 10px 20px; background: #6c5ce7; color: white; text-decoration: none; border-radius: 8px; }
+        </style>
+      </head>
+      <body>
+        <h1>📜 شروط الخدمة</h1>
+        <p>باستخدامك لتطبيق Smart Promo Hub، فإنك توافق على الالتزام بالشروط التالية:</p>
+        <ul>
+          <li>جميع الحملات الإعلانية التي تنشئها عبر المنصة هي مسؤوليتك بالكامل.</li>
+          <li>نحن نقدم المنصة كخدمة، ولا نتحمل مسؤولية أي خسائر ناتجة عن استخدامك لها.</li>
+          <li>نحتفظ بالحق في تحديث هذه الشروط في أي وقت، وسيتم إخطارك بأي تغييرات جوهرية.</li>
+        </ul>
+        <a href="/" class="btn">🚀 العودة إلى التطبيق</a>
+      </body>
+    </html>
+  `);
 });
 
 // ==================== خدمة الملفات الثابتة ====================
