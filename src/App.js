@@ -314,11 +314,13 @@ function App() {
           </div>
         )}
 
+        {/* صفحة الإعدادات */}
         {currentPage === "settings" && (
           <div style={styles.formContainer}>
             <h2 style={styles.pageTitle}>⚙️ الإعدادات</h2>
             <div style={styles.settingRow}><strong>الحساب:</strong><span>@{user.username}</span></div>
             <div style={styles.settingRow}><strong>حالة الاتصال:</strong><span style={{ color: "#2ecc71" }}>متصل</span></div>
+            <div style={styles.settingRow}><strong>توثيق النظام:</strong><span>مكتمل ومربوط بمحفظتك الرقمية</span></div>
           </div>
         )}
 
