@@ -1,17 +1,23 @@
-DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#6c5ce7" />
-  <title>منصة الترويج الذكي - Smart Promo Hub</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f0e17; color: #fffffe; }
-  </style>
-</head>
-<body>
-  <noscript>تحتاج إلى تفعيل JavaScript لتشغيل هذا التطبيق.</noscript>
-  <div id="root"></div>
-</body>
-</html>
+// تهيئة حزمة Pi المبرمجية
+Pi.init({ version: "2.0", sandbox: true }); 
+
+// دالة تسجيل الدخول التي يتم استدعاؤها عند الضغط على الزر
+async function authUser() {
+    try {
+        // طلب التوثيق الرسمي من متصفح Pi Browser
+        const scopes = ['username', 'payments'];
+        const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
+
+        // إذا نجح تسجيل الدخول، يمكنك توجيه المستخدم لصفحة الحساب الداخلية
+        alert(`أهلاً بك ${auth.user.username}`);
+        window.location.href = "dashboard.html"; 
+
+    } catch (error) {
+        console.error("فشل تسجيل الدخول:", error);
+        alert("تأكد من فتح الرابط من داخل متصفح Pi Browser الرسمي.");
+    }
+}
+
+function onIncompletePaymentFound(payment) {
+    console.log("Incomplete payment found", payment);
+}
