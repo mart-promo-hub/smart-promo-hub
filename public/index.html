@@ -1,70 +1,64 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-    <meta charset="UTF-8">
-    <title>Pi App</title>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
 
-    <!-- تحميل مكتبة Pi SDK -->
-    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+  <title>Smart Promo Hub</title>
+
+  <meta
+    name="description"
+    content="Smart Promo Hub - منصة الترويج الذكي"
+  />
+
+  <meta
+    name="theme-color"
+    content="#6C5CE7"
+  />
+
+  <meta
+    name="apple-mobile-web-app-capable"
+    content="yes"
+  />
+
+  <meta
+    name="mobile-web-app-capable"
+    content="yes"
+  />
+
+  <meta
+    name="apple-mobile-web-app-status-bar-style"
+    content="default"
+  />
+
+  <meta
+    name="apple-mobile-web-app-title"
+    content="Smart Promo Hub"
+  />
+
+  <link
+    rel="icon"
+    href="%PUBLIC_URL%/favicon.ico"
+  />
+
+  <link
+    rel="manifest"
+    href="%PUBLIC_URL%/manifest.json"
+  />
+
+  <!-- سيتم تحميل Pi SDK من داخل App.js -->
 </head>
 
 <body>
 
-<h2>تطبيق Pi</h2>
+<noscript>
+يجب تفعيل JavaScript لتشغيل التطبيق.
+</noscript>
 
-<button onclick="authUser()">تسجيل الدخول باستخدام Pi</button>
-
-<script>
-// تهيئة Pi SDK
-let piReady = false;
-
-async function initializePi() {
-    try {
-        await Pi.init({
-            version: "2.0",
-            sandbox: true
-        });
-
-        piReady = true;
-        console.log("Pi SDK initialized successfully");
-    } catch (error) {
-        console.error("Failed to initialize Pi SDK:", error);
-    }
-}
-
-// تشغيل التهيئة عند تحميل الصفحة
-window.addEventListener("load", initializePi);
-
-// دالة تسجيل الدخول
-async function authUser() {
-    if (!piReady) {
-        alert("يرجى الانتظار حتى تكتمل تهيئة Pi SDK.");
-        return;
-    }
-
-    try {
-        const scopes = ["username", "payments"];
-
-        const auth = await Pi.authenticate(
-            scopes,
-            onIncompletePaymentFound
-        );
-
-        alert(`أهلاً بك ${auth.user.username}`);
-
-        window.location.href = "dashboard.html";
-
-    } catch (error) {
-        console.error("فشل تسجيل الدخول:", error);
-        alert("تأكد من فتح التطبيق من داخل Pi Browser الرسمي.");
-    }
-}
-
-// معالجة المدفوعات غير المكتملة
-function onIncompletePaymentFound(payment) {
-    console.log("Incomplete payment found:", payment);
-}
-</script>
+<div id="root"></div>
 
 </body>
 </html>
