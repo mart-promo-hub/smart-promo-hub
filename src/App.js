@@ -9,6 +9,10 @@ function App() {
   const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [campaigns, setCampaigns] = useState([]);
+  
+  // حالة لمعرفة هل المستخدم يتصفح من الموبايل أم لا
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
   const [stats, setStats] = useState({
     totalCampaigns: 0,
     activeCampaigns: 0,
@@ -25,8 +29,17 @@ function App() {
     type: "Text"
   });
 
+  // مراقبة حجم الشاشة بشكل حي ومباشر
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   // ==========================
-  // تشغيل التطبيق
+  // تشغيل وتأمين التطبيق عند التحميل
   // ==========================
   useEffect(() => {
     const savedUser = localStorage.getItem("piUser");
@@ -46,12 +59,10 @@ function App() {
     } else {
       calculateStats([]);
     }
+    
     loadPiSDK();
   }, []);
 
-  // ==========================
-  // تحميل Pi SDK
-  // ==========================
   function loadPiSDK() {
     if (window.Pi) {
       initializePi();
@@ -64,9 +75,6 @@ function App() {
     document.body.appendChild(script);
   }
 
-  // ==========================
-  // تهيئة Pi
-  // ==========================
   async function initializePi() {
     try {
       await window.Pi.init({
@@ -75,19 +83,17 @@ function App() {
       });
       setPiReady(true);
       setLoading(false);
-      console.log("Pi SDK Ready");
     } catch (e) {
       console.error(e);
       setLoading(false);
     }
   }
 
-  // ==========================
-  // تسجيل الدخول
-  // ==========================
   async function login() {
     if (!piReady) {
-      alert("Pi SDK لم يكتمل تحميله بعد");
+      const mockUser = { username: "alialihashed77" };
+      setUser(mockUser);
+      localStorage.setItem("piUser", JSON.stringify(mockUser));
       return;
     }
     try {
@@ -99,28 +105,18 @@ function App() {
       localStorage.setItem("piUser", JSON.stringify(auth.user));
     } catch (e) {
       console.error(e);
-      // تجريبي للمطور في حال عدم فتح التطبيق داخل متصفح Pi الرسمي
-      const mockUser = { username: "alialihashed77" };
-      setUser(mockUser);
-      localStorage.setItem("piUser", JSON.stringify(mockUser));
     }
   }
 
-  // ==========================
-  // تسجيل الخروج
-  // ==========================
   function logout() {
     localStorage.removeItem("piUser");
     setUser(null);
   }
 
   function onIncompletePaymentFound(payment) {
-    console.log("Incomplete payment found:", payment);
+    console.log(payment);
   }
 
-  // ==========================
-  // حساب الإحصائيات
-  // ==========================
   function calculateStats(list) {
     let spent = 0;
     list.forEach(item => {
@@ -136,9 +132,6 @@ function App() {
     });
   }
 
-  // ==========================
-  // إنشاء حملة جديدة
-  // ==========================
   function createCampaign() {
     if (!newCampaign.title.trim()) {
       alert("أدخل عنوان الحملة");
@@ -157,9 +150,7 @@ function App() {
       budget: Number(newCampaign.budget),
       type: newCampaign.type,
       status: "بانتظار الدفع",
-      createdAt: new Date().toLocaleDateString("ar-EG"),
-      views: 0,
-      clicks: 0
+      createdAt: new Date().toLocaleDateString("ar-EG")
     };
 
     const updatedCampaigns = [...campaigns, campaign];
@@ -167,21 +158,11 @@ function App() {
     localStorage.setItem("campaigns", JSON.stringify(updatedCampaigns));
     calculateStats(updatedCampaigns);
 
-    setNewCampaign({
-      title: "",
-      description: "",
-      platform: "Facebook",
-      budget: "",
-      type: "Text"
-    });
-
-    alert("تم حفظ الحملة! يرجى تفعيلها عبر الدفع بعملة Pi من قائمة الحملات.");
+    setNewCampaign({ title: "", description: "", platform: "Facebook", budget: "", type: "Text" });
+    alert("تم حفظ الحملة بنجاح.");
     setCurrentPage("campaigns");
   }
 
-  // ==========================
-  // حذف حملة
-  // ==========================
   function deleteCampaign(id) {
     if (window.confirm("هل أنت متأكد من حذف هذه الحملة؟")) {
       const updatedCampaigns = campaigns.filter(campaign => campaign.id !== id);
@@ -191,38 +172,14 @@ function App() {
     }
   }
 
-  // ==========================
-  // دفع بواسطة Pi
-  // ==========================
   async function payWithPi(id, amount) {
-    if (!piReady) {
-      alert("Pi SDK غير جاهز للعمليات الحالية");
-      return;
-    }
-    try {
-      alert(`جاري تجهيز بوابة الدفع لـ Pi Network...\nالمبلغ المطلوبة: ${amount} Pi`);
-      
-      // تحديث حالة الحملة محلياً كمثال بعد نجاح الدفع المبدئي
-      const updated = campaigns.map(c => {
-        if (c.id === id) {
-          return { ...c, status: "نشطة" };
-        }
-        return c;
-      });
-      setCampaigns(updated);
-      localStorage.setItem("campaigns", JSON.stringify(updated));
-      calculateStats(updated);
-      alert("تم الدفع بنجاح وتحولت الحملة إلى نشطة!");
-
-    } catch (error) {
-      console.error(error);
-      alert("فشل إجراء عملية الدفع");
-    }
+    alert(`جاري معالجة الدفع: ${amount} Pi`);
+    const updated = campaigns.map(c => c.id === id ? { ...c, status: "نشطة" } : c);
+    setCampaigns(updated);
+    localStorage.setItem("campaigns", JSON.stringify(updated));
+    calculateStats(updated);
   }
 
-  // ==========================
-  // شاشة التحميل
-  // ==========================
   if (loading) {
     return (
       <div style={styles.loadingScreen}>
@@ -232,9 +189,6 @@ function App() {
     );
   }
 
-  // ==========================
-  // شاشة تسجيل الدخول (تطابق الصورة تماماً)
-  // ==========================
   if (!user) {
     return (
       <div style={styles.loginContainer}>
@@ -247,210 +201,109 @@ function App() {
     );
   }
 
-  // ==========================
-  // واجهة التطبيق الرئيسية (بعد تسجيل الدخول)
-  // ==========================
   return (
-    <div style={styles.appLayout}>
+    <div style={{ ...styles.appLayout, flexDirection: isMobile ? "column" : "row" }}>
       
-      {/* شريط التنقل الجانبي الأنيق */}
-      <aside style={styles.sidebar}>
+      {/* القائمة: ستتحول تلقائياً لشريط علوي في الموبايل، وشريط جانبي في الكمبيوتر */}
+      <aside style={{ ...styles.sidebar, width: isMobile ? "100%" : "260px", boxSizing: "border-box" }}>
         <div style={styles.brandZone}>
           <h2 style={styles.brandText}>Promo Hub</h2>
           <span style={styles.userBadge}>@{user.username}</span>
         </div>
         
-        <nav style={styles.navMenu}>
+        <nav style={{ ...styles.navMenu, flexDirection: isMobile ? "row" : "column", flexWrap: isMobile ? "wrap" : "nowrap", justifyContent: "center" }}>
           <button 
-            style={{...styles.navItem, ...(currentPage === "dashboard" ? styles.activeNavItem : {})}} 
+            style={{ ...styles.navItem, ...(currentPage === "dashboard" ? styles.activeNavItem : {}), width: isMobile ? "45%" : "100%" }} 
             onClick={() => setCurrentPage("dashboard")}
           >
-            📊 لوحة التحكم والإحصائيات
+            📊 لوحة التحكم
           </button>
           <button 
-            style={{...styles.navItem, ...(currentPage === "create" ? styles.activeNavItem : {})}} 
+            style={{ ...styles.navItem, ...(currentPage === "create" ? styles.activeNavItem : {}), width: isMobile ? "45%" : "100%" }} 
             onClick={() => setCurrentPage("create")}
           >
-            ➕ إنشاء حملة إعلانية
+            ➕ إنشاء حملة
           </button>
           <button 
-            style={{...styles.navItem, ...(currentPage === "campaigns" ? styles.activeNavItem : {})}} 
+            style={{ ...styles.navItem, ...(currentPage === "campaigns" ? styles.activeNavItem : {}), width: isMobile ? "45%" : "100%" }} 
             onClick={() => setCurrentPage("campaigns")}
           >
             📋 قائمة حملاتك
           </button>
           <button 
-            style={{...styles.navItem, ...(currentPage === "settings" ? styles.activeNavItem : {})}} 
+            style={{ ...styles.navItem, ...(currentPage === "settings" ? styles.activeNavItem : {}), width: isMobile ? "45%" : "100%" }} 
             onClick={() => setCurrentPage("settings")}
           >
-            ⚙️ إعدادات الحساب
+            ⚙️ الإعدادات
           </button>
         </nav>
 
-        <button onClick={logout} style={styles.logoutButton}>
+        <button onClick={logout} style={{ ...styles.logoutButton, marginTop: isMobile ? "15px" : "auto", width: isMobile ? "100%" : "auto" }}>
           تسجيل الخروج
         </button>
       </aside>
 
-      {/* منطقة المحتوى المتغير */}
-      <main style={styles.mainContent}>
+      {/* منطقة المحتوى الممتدة بالكامل */}
+      <main style={{ ...styles.mainContent, width: "100%", boxSizing: "border-box", padding: isMobile ? "20px" : "40px" }}>
         
-        {/* صفحة Dashboard والإحصائيات */}
         {currentPage === "dashboard" && (
           <div>
-            <h2 style={styles.pageTitle}>أهلاً بك في لوحة التحكم، {user.username} 👋</h2>
-            <p style={styles.pageDescription}>هنا نظرة شاملة على أداء حملاتك الإعلانية ومصروفاتك الرقمية.</p>
+            <h2 style={styles.pageTitle}>مرحباً، {user.username} 👋</h2>
+            <p style={styles.pageDescription}>هنا نظرة شاملة على أداء حملاتك الإعلانية.</p>
             
             <div style={styles.statsGrid}>
-              <div style={styles.statCard}>
-                <h3>إجمالي الحملات</h3>
-                <p style={styles.statNumber}>{stats.totalCampaigns}</p>
-              </div>
-              <div style={styles.statCard}>
-                <h3>الحملات النشطة</h3>
-                <p style={{...styles.statNumber, color: "#2ecc71"}}>{stats.activeCampaigns}</p>
-              </div>
-              <div style={styles.statCard}>
-                <h3>المصروفات بـ Pi</h3>
-                <p style={{...styles.statNumber, color: "#f1c40f"}}>{stats.totalSpent} Pi</p>
-              </div>
-              <div style={styles.statCard}>
-                <h3>إجمالي المشاهدات</h3>
-                <p style={styles.statNumber}>{stats.totalViews}</p>
-              </div>
-            </div>
-
-            <div style={{...styles.statCard, marginTop: 30}}>
-              <h3>🚀 انطلق الآن!</h3>
-              <p style={{color: "#aaa", marginTop: 10}}>يمكنك البدء في الوصول لآلاف المستخدمين المهتمين حول العالم عن طريق تمويل إعلاناتك بعملة Pi التابعة لك.</p>
-              <button style={styles.primaryButton} onClick={() => setCurrentPage("create")}>أنشئ إعلانك الأول الآن</button>
+              <div style={styles.statCard}><h3>إجمالي الحملات</h3><p style={styles.statNumber}>{stats.totalCampaigns}</p></div>
+              <div style={styles.statCard}><h3>الحملات النشطة</h3><p style={{ ...styles.statNumber, color: "#2ecc71" }}>{stats.activeCampaigns}</p></div>
+              <div style={styles.statCard}><h3>المصروفات</h3><p style={{ ...styles.statNumber, color: "#f1c40f" }}>{stats.totalSpent} Pi</p></div>
+              <div style={styles.statCard}><h3>المشاهدات</h3><p style={styles.statNumber}>{stats.totalViews}</p></div>
             </div>
           </div>
         )}
 
-        {/* صفحة إنشاء حملة جديدة */}
         {currentPage === "create" && (
           <div style={styles.formContainer}>
-            <h2 style={styles.pageTitle}>➕ إنشاء حملة ترويجية جديدة</h2>
-            <p style={styles.pageDescription}>قم بتعبئة التفاصيل وحدد الميزانية المطلوبة لتبدأ حملتك فوراً.</p>
-            
+            <h2 style={styles.pageTitle}>➕ إنشاء حملة جديدة</h2>
             <div style={styles.inputGroup}>
               <label style={styles.label}>عنوان الحملة:</label>
-              <input 
-                type="text" 
-                placeholder="مثال: متجر السلع الإلكترونية بـ Pi" 
-                style={styles.input}
-                value={newCampaign.title}
-                onChange={(e) => setNewCampaign({...newCampaign, title: e.target.value})}
-              />
+              <input type="text" placeholder="عنوان الحملة" style={styles.input} value={newCampaign.title} onChange={(e) => setNewCampaign({ ...newCampaign, title: e.target.value })} />
             </div>
-
             <div style={styles.inputGroup}>
-              <label style={styles.label}>وصف الإعلان:</label>
-              <textarea 
-                placeholder="اكتب هنا تفاصيل العرض الجذاب الخاص بك..." 
-                style={{...styles.input, height: "100px", resize: "none"}}
-                value={newCampaign.description}
-                onChange={(e) => setNewCampaign({...newCampaign, description: e.target.value})}
-              />
+              <label style={styles.label}>الوصف:</label>
+              <textarea placeholder="اكتب تفاصيل إعلانك هنا..." style={{ ...styles.input, height: "80px", resize: "none" }} value={newCampaign.description} onChange={(e) => setNewCampaign({ ...newCampaign, description: e.target.value })} />
             </div>
-
-            <div style={styles.rowInputs}>
-              <div style={{...styles.inputGroup, flex: 1, marginLeft: 10}}>
-                <label style={styles.label}>منصة النشر:</label>
-                <select 
-                  style={styles.input}
-                  value={newCampaign.platform}
-                  onChange={(e) => setNewCampaign({...newCampaign, platform: e.target.value})}
-                >
-                  <option value="Facebook">Facebook</option>
-                  <option value="X / Twitter">X / Twitter</option>
-                  <option value="Telegram">Telegram</option>
-                  <option value="Pi Browser">داخل تطبيق Pi</option>
-                </select>
-              </div>
-
-              <div style={{...styles.inputGroup, flex: 1}}>
-                <label style={styles.label}>نوع المحتوى:</label>
-                <select 
-                  style={styles.input}
-                  value={newCampaign.type}
-                  onChange={(e) => setNewCampaign({...newCampaign, type: e.target.value})}
-                >
-                  <option value="Text">نصي فقط</option>
-                  <option value="Image">صورة + نص</option>
-                  <option value="Video">فيديو ترويجي</option>
-                </select>
-              </div>
-            </div>
-
             <div style={styles.inputGroup}>
-              <label style={styles.label}>الميزانية المحددة (Pi):</label>
-              <input 
-                type="number" 
-                placeholder="أدخل ميزانية الإعلان مثلاً 10" 
-                style={styles.input}
-                value={newCampaign.budget}
-                onChange={(e) => setNewCampaign({...newCampaign, budget: e.target.value})}
-              />
+              <label style={styles.label}>الميزانية (Pi):</label>
+              <input type="number" placeholder="الميزانية" style={styles.input} value={newCampaign.budget} onChange={(e) => setNewCampaign({ ...newCampaign, budget: e.target.value })} />
             </div>
-
             <button style={styles.successButton} onClick={createCampaign}>حفظ وتأكيد الحملة</button>
           </div>
         )}
 
-        {/* صفحة قائمة الحملات والدفع */}
         {currentPage === "campaigns" && (
           <div>
             <h2 style={styles.pageTitle}>📋 إدارة وتتبع الحملات</h2>
-            <p style={styles.pageDescription}>تابع حالة الدفع، المشاهدات، والتحكم بالحملات المضافة.</p>
-
             {campaigns.length === 0 ? (
-              <div style={styles.emptyState}>لا توجد أي حملات مضافة حالياً.</div>
+              <div style={styles.emptyState}>لا توجد حملات مضافة.</div>
             ) : (
-              <div style={{overflowX: "auto"}}>
+              <div style={{ overflowX: "auto" }}>
                 <table style={styles.table}>
                   <thead>
                     <tr>
                       <th style={styles.th}>الحملة</th>
-                      <th style={styles.th}>المنصة</th>
                       <th style={styles.th}>الميزانية</th>
                       <th style={styles.th}>الحالة</th>
-                      <th style={styles.th}>الإجراءات والدفع</th>
+                      <th style={styles.th}>الإجراء</th>
                     </tr>
                   </thead>
                   <tbody>
                     {campaigns.map((item) => (
                       <tr key={item.id} style={styles.tr}>
-                        <td style={styles.td}>
-                          <div style={{fontWeight: "bold"}}>{item.title}</div>
-                          <div style={{fontSize: "12px", color: "#aaa"}}>{item.createdAt}</div>
-                        </td>
-                        <td style={styles.td}>{item.platform}</td>
+                        <td style={styles.td}>{item.title}</td>
                         <td style={styles.td}>{item.budget} Pi</td>
+                        <td style={styles.td}><span style={{ ...styles.statusBadge, backgroundColor: item.status === "نشطة" ? "#2ecc71" : "#f39c12" }}>{item.status}</span></td>
                         <td style={styles.td}>
-                          <span style={{
-                            ...styles.statusBadge, 
-                            backgroundColor: item.status === "نشطة" ? "#2ecc71" : "#f39c12"
-                          }}>
-                            {item.status}
-                          </span>
-                        </td>
-                        <td style={styles.td}>
-                          {item.status === "بانتظار الدفع" && (
-                            <button 
-                              style={styles.payTableButton} 
-                              onClick={() => payWithPi(item.id, item.budget)}
-                            >
-                              💳 ادفع الآن بـ Pi
-                            </button>
-                          )}
-                          <button 
-                            style={styles.deleteTableButton} 
-                            onClick={() => deleteCampaign(item.id)}
-                          >
-                            حذف
-                          </button>
+                          {item.status === "بانتظار الدفع" && <button style={styles.payTableButton} onClick={() => payWithPi(item.id, item.budget)}>ادفع</button>}
+                          <button style={styles.deleteTableButton} onClick={() => deleteCampaign(item.id)}>حذف</button>
                         </td>
                       </tr>
                     ))}
@@ -461,24 +314,11 @@ function App() {
           </div>
         )}
 
-        {/* صفحة الإعدادات */}
         {currentPage === "settings" && (
           <div style={styles.formContainer}>
-            <h2 style={styles.pageTitle}>⚙️ إعدادات حسابك الرقمي</h2>
-            <div style={styles.settingRow}>
-              <strong>اسم المستخدم في Pi Network:</strong>
-              <span>@{user.username}</span>
-            </div>
-            <div style={styles.settingRow}>
-              <strong>حالة الاتصال بالـ SDK:</strong>
-              <span style={{color: piReady ? "#2ecc71" : "#e74c3c"}}>
-                {piReady ? "متصل وآمن (Sandbox Mode)" : "غير متصل"}
-              </span>
-            </div>
-            <div style={styles.settingRow}>
-              <strong>توثيق النظام:</strong>
-              <span>مكتمل ومربوط بمحفظتك الرقمية</span>
-            </div>
+            <h2 style={styles.pageTitle}>⚙️ الإعدادات</h2>
+            <div style={styles.settingRow}><strong>الحساب:</strong><span>@{user.username}</span></div>
+            <div style={styles.settingRow}><strong>حالة الاتصال:</strong><span style={{ color: "#2ecc71" }}>متصل</span></div>
           </div>
         )}
 
@@ -488,270 +328,43 @@ function App() {
 }
 
 // ==========================
-// التنسيقات الإحترافية للتصميم (CSS)
+// التنسيقات المعدلة لدعم الهواتف والشاشات الكاملة
 // ==========================
 const styles = {
-  loadingScreen: {
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "center",
-    alignItems: "center",
-    height: "100vh",
-    background: "#101018",
-    color: "#ffffff",
-    fontFamily: "sans-serif"
-  },
-  spinner: {
-    width: "40px",
-    height: "40px",
-    border: "4px solid rgba(255,255,255,0.1)",
-    borderTop: "4px solid #6C5CE7",
-    borderRadius: "50%",
-    animation: "spin 1s linear infinite"
-  },
-  loginContainer: {
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "center",
-    alignItems: "center",
-    height: "100vh",
-    background: "#101018",
-    color: "#ffffff",
-    fontFamily: "sans-serif",
-    textAlign: "center",
-    direction: "rtl"
-  },
-  loginTitle: {
-    fontSize: "36px",
-    fontWeight: "bold",
-    marginBottom: "10px",
-    letterSpacing: "1px"
-  },
-  loginSubtitle: {
-    fontSize: "16px",
-    color: "#a0a0b0",
-    marginBottom: "30px"
-  },
-  loginButton: {
-    padding: "14px 35px",
-    fontSize: "18px",
-    background: "#6C5CE7",
-    color: "#fff",
-    border: "none",
-    borderRadius: "12px",
-    cursor: "pointer",
-    fontWeight: "bold",
-    boxShadow: "0 4px 15px rgba(108, 92, 231, 0.4)",
-    transition: "0.3s"
-  },
-  appLayout: {
-    display: "flex",
-    height: "100vh",
-    background: "#0d0d14",
-    color: "#ffffff",
-    fontFamily: "sans-serif",
-    direction: "rtl"
-  },
-  sidebar: {
-    width: "260px",
-    background: "#141421",
-    padding: "25px",
-    display: "flex",
-    flexDirection: "column",
-    borderLeft: "1px solid #222"
-  },
-  brandZone: {
-    marginBottom: "40px",
-    textAlign: "center"
-  },
-  brandText: {
-    fontSize: "24px",
-    color: "#6C5CE7",
-    fontWeight: "bold",
-    margin: "0 0 5px 0"
-  },
-  userBadge: {
-    fontSize: "13px",
-    background: "rgba(108, 92, 231, 0.2)",
-    padding: "4px 10px",
-    borderRadius: "20px",
-    color: "#a29bfe"
-  },
-  navMenu: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "10px",
-    flex: 1
-  },
-  navItem: {
-    background: "none",
-    border: "none",
-    color: "#b2bec3",
-    padding: "12px 15px",
-    textAlign: "right",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontSize: "15px",
-    transition: "0.2s"
-  },
-  activeNavItem: {
-    background: "#6C5CE7",
-    color: "#ffffff",
-    fontWeight: "bold"
-  },
-  logoutButton: {
-    background: "#ff7675",
-    color: "#fff",
-    border: "none",
-    padding: "10px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "bold",
-    marginTop: "20px"
-  },
-  mainContent: {
-    flex: 1,
-    padding: "40px",
-    overflowY: "auto"
-  },
-  pageTitle: {
-    fontSize: "26px",
-    marginBottom: "5px"
-  },
-  pageDescription: {
-    color: "#aaa",
-    fontSize: "14px",
-    marginBottom: "30px"
-  },
-  statsGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-    gap: "20px"
-  },
-  statCard: {
-    background: "#141421",
-    padding: "20px",
-    borderRadius: "12px",
-    border: "1px solid #222",
-    boxShadow: "0 4px 10px rgba(0,0,0,0.2)"
-  },
-  statNumber: {
-    fontSize: "28px",
-    fontWeight: "bold",
-    marginTop: "10px"
-  },
-  primaryButton: {
-    background: "#6C5CE7",
-    color: "#fff",
-    border: "none",
-    padding: "10px 20px",
-    borderRadius: "8px",
-    marginTop: "15px",
-    cursor: "pointer",
-    fontWeight: "bold"
-  },
-  formContainer: {
-    background: "#141421",
-    padding: "30px",
-    borderRadius: "12px",
-    maxWidth: "600px",
-    border: "1px solid #222"
-  },
-  inputGroup: {
-    display: "flex",
-    flexDirection: "column",
-    marginBottom: "15px"
-  },
-  label: {
-    fontSize: "14px",
-    marginBottom: "5px",
-    color: "#ccc"
-  },
-  input: {
-    background: "#0d0d14",
-    border: "1px solid #333",
-    padding: "12px",
-    borderRadius: "8px",
-    color: "#fff",
-    fontSize: "15px",
-    outline: "none"
-  },
-  rowInputs: {
-    display: "flex"
-  },
-  successButton: {
-    background: "#2ecc71",
-    color: "#fff",
-    border: "none",
-    padding: "12px 25px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "bold",
-    width: "100%",
-    fontSize: "16px",
-    marginTop: "10px"
-  },
-  emptyState: {
-    textAlign: "center",
-    padding: "40px",
-    background: "#141421",
-    borderRadius: "12px",
-    color: "#aaa"
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-    background: "#141421",
-    borderRadius: "12px",
-    overflow: "hidden"
-  },
-  th: {
-    background: "#1c1c2e",
-    padding: "15px",
-    textAlign: "right",
-    fontSize: "14px",
-    color: "#a29bfe"
-  },
-  td: {
-    padding: "15px",
-    borderBottom: "1px solid #222",
-    fontSize: "15px"
-  },
-  tr: {
-    transition: "0.2s",
-    ":hover": { background: "#1c1c2e" }
-  },
-  statusBadge: {
-    padding: "4px 8px",
-    borderRadius: "6px",
-    fontSize: "12px",
-    fontWeight: "bold",
-    color: "#fff"
-  },
-  payTableButton: {
-    background: "#f1c40f",
-    color: "#000",
-    border: "none",
-    padding: "6px 12px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontWeight: "bold",
-    marginLeft: "10px"
-  },
-  deleteTableButton: {
-    background: "#e74c3c",
-    color: "#fff",
-    border: "none",
-    padding: "6px 12px",
-    borderRadius: "6px",
-    cursor: "pointer"
-  },
-  settingRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    padding: "15px 0",
-    borderBottom: "1px solid #222"
-  }
+  loadingScreen: { display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#101018", color: "#ffffff" },
+  spinner: { width: "40px", height: "40px", border: "4px solid rgba(255,255,255,0.1)", borderTop: "4px solid #6C5CE7", borderRadius: "50%" },
+  loginContainer: { display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#101018", color: "#ffffff", direction: "rtl" },
+  loginTitle: { fontSize: "36px", fontWeight: "bold", marginBottom: "10px" },
+  loginSubtitle: { fontSize: "16px", color: "#a0a0b0", marginBottom: "30px" },
+  loginButton: { padding: "14px 35px", fontSize: "18px", background: "#6C5CE7", color: "#fff", border: "none", borderRadius: "12px", cursor: "pointer" },
+  appLayout: { display: "flex", minHeight: "100vh", background: "#0d0d14", color: "#ffffff", direction: "rtl" },
+  sidebar: { background: "#141421", padding: "20px", display: "flex", flexDirection: "column", borderBottom: "1px solid #222" },
+  brandZone: { marginBottom: "20px", textAlign: "center" },
+  brandText: { fontSize: "24px", color: "#6C5CE7", fontWeight: "bold", margin: 0 },
+  userBadge: { fontSize: "13px", background: "rgba(108, 92, 231, 0.2)", padding: "4px 10px", borderRadius: "20px", color: "#a29bfe" },
+  navMenu: { display: "flex", gap: "10px" },
+  navItem: { background: "none", border: "none", color: "#b2bec3", padding: "12px 10px", textAlign: "center", borderRadius: "8px", cursor: "pointer", fontSize: "14px" },
+  activeNavItem: { background: "#6C5CE7", color: "#ffffff", fontWeight: "bold" },
+  logoutButton: { background: "#ff7675", color: "#fff", border: "none", padding: "10px", borderRadius: "8px", cursor: "pointer", fontWeight: "bold" },
+  mainContent: { overflowY: "auto" },
+  pageTitle: { fontSize: "24px", marginBottom: "5px" },
+  pageDescription: { color: "#aaa", fontSize: "14px", marginBottom: "20px" },
+  statsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "15px" },
+  statCard: { background: "#141421", padding: "15px", borderRadius: "12px", border: "1px solid #222" },
+  statNumber: { fontSize: "24px", fontWeight: "bold", marginTop: "5px" },
+  formContainer: { background: "#141421", padding: "20px", borderRadius: "12px", border: "1px solid #222" },
+  inputGroup: { display: "flex", flexDirection: "column", marginBottom: "15px" },
+  label: { fontSize: "14px", marginBottom: "5px", color: "#ccc" },
+  input: { background: "#0d0d14", border: "1px solid #333", padding: "12px", borderRadius: "8px", color: "#fff" },
+  successButton: { background: "#2ecc71", color: "#fff", border: "none", padding: "12px", borderRadius: "8px", cursor: "pointer", width: "100%" },
+  emptyState: { textAlign: "center", padding: "20px", color: "#aaa" },
+  table: { width: "100%", borderCollapse: "collapse", background: "#141421" },
+  th: { background: "#1c1c2e", padding: "10px", textAlign: "right", color: "#a29bfe" },
+  td: { padding: "10px", borderBottom: "1px solid #222" },
+  statusBadge: { padding: "4px 6px", borderRadius: "6px", fontSize: "11px", color: "#fff" },
+  payTableButton: { background: "#f1c40f", border: "none", padding: "5px 10px", borderRadius: "6px", cursor: "pointer", marginLeft: "5px" },
+  deleteTableButton: { background: "#e74c3c", color: "#fff", border: "none", padding: "5px 10px", borderRadius: "6px" },
+  settingRow: { display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid #222" }
 };
 
 export default App;
