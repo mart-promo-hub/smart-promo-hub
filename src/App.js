@@ -110,11 +110,36 @@ function App() {
     alert(`📊 نتائج الحملة: ${c.name}\n\n📈 المشاهدات: ${c.impressions.toLocaleString()}\n🖱️ النقرات: ${c.clicks.toLocaleString()}\n📊 CTR: ${c.ctr}%\n❤️ التفاعل: ${c.engagement.toLocaleString()}\n🔄 التحويلات: ${c.conversions}\n💰 العائد (ROI): ${c.roi}%\n💵 الميزانية: ${c.budget} π`);
   };
 
-  const buyPackage = (price) => {
-    if (balance < price) return alert(`⚠️ رصيدك غير كافٍ! رصيدك الحالي: ${balance} π`);
-    if (window.confirm(`هل تريد شراء الباقة بـ ${price} π؟`)) {
-      setBalance(balance - price);
-      alert(`✅ تم شراء الباقة بنجاح! رصيدك المتبقي: ${balance - price} π`);
+  // ===== دالة شراء باقة (متكاملة مع الخادم الخلفي) =====
+  const buyPackage = async (price) => {
+    if (balance < price) {
+      return alert(`⚠️ رصيدك غير كافٍ! رصيدك الحالي: ${balance} π`);
+    }
+
+    const userId = 'test_user_' + Date.now();
+
+    try {
+      const response = await fetch('/api/pay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: price,
+          memo: 'شراء باقة إعلانية',
+          user_id: userId
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setBalance(balance - price);
+        alert(`✅ تم شراء الباقة بنجاح! رصيدك المتبقي: ${balance - price} π\nرقم المعاملة: ${data.transaction_id}`);
+      } else {
+        alert('❌ فشلت عملية الدفع. حاول مرة أخرى.');
+      }
+    } catch (error) {
+      console.error('❌ خطأ في الدفع:', error);
+      alert('❌ حدث خطأ في الاتصال بالخادم.');
     }
   };
 
