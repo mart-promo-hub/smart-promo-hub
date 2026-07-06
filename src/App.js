@@ -29,6 +29,9 @@ function App() {
     type: "Text"
   });
 
+  // ⚙️ تم التعديل هنا: ربط الفرونت إند برابط السيرفر الخلفي الخاص بك على Render
+  const BACKEND_URL = "https://smart-promo-hub.onrender.com";
+
   // مراقبة حجم الشاشة بشكل حي ومباشر
   useEffect(() => {
     const handleResize = () => {
@@ -79,7 +82,7 @@ function App() {
     try {
       await window.Pi.init({
         version: "2.0",
-        sandbox: true
+        sandbox: true // غيرها إلى false عند الإطلاق النهائي على الماينيت لاستلام أموال حقيقية
       });
       setPiReady(true);
       setLoading(false);
@@ -113,8 +116,14 @@ function App() {
     setUser(null);
   }
 
+  // معالجة المدفوعات المعلقة تلقائياً عبر السيرفر الخلفي
   function onIncompletePaymentFound(payment) {
-    console.log(payment);
+    console.log("تم العثور على عملية دفع معلقة غير مكتملة:", payment);
+    fetch(`${BACKEND_URL}/api/pi/complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentId: payment.identifier, txid: payment.transaction.txid })
+    }).catch(err => console.error("فشل معالجة الدفعة المعلقة:", err));
   }
 
   function calculateStats(list) {
@@ -159,7 +168,7 @@ function App() {
     calculateStats(updatedCampaigns);
 
     setNewCampaign({ title: "", description: "", platform: "Facebook", budget: "", type: "Text" });
-    alert("تم حفظ الحملة بنجاح.");
+    alert("تم حفظ الحملة بنجاح. يرجى تفعيلها عبر الدفع بعملة Pi.");
     setCurrentPage("campaigns");
   }
 
@@ -172,12 +181,76 @@ function App() {
     }
   }
 
+  // ========================================================
+  // بوابة الدفع المربوطة بالسيرفر الخاص بك لتسجيلها وإغلاقها قانونياً
+  // ========================================================
   async function payWithPi(id, amount) {
-    alert(`جاري معالجة الدفع: ${amount} Pi`);
-    const updated = campaigns.map(c => c.id === id ? { ...c, status: "نشطة" } : c);
-    setCampaigns(updated);
-    localStorage.setItem("campaigns", JSON.stringify(updated));
-    calculateStats(updated);
+    if (!piReady || !window.Pi) {
+      alert("بوابة الدفع غير جاهزة. تأكد من تشغيل التطبيق داخل متصفح Pi Browser.");
+      return;
+    }
+
+    try {
+      await window.Pi.createPayment({
+        amount: Number(amount),
+        memo: `تمويل حملة إعلانية رقم: ${id}`,
+        metadata: { campaignId: id },
+      }, {
+        // الخطوة أ: إرسال معرف المعاملة إلى السيرفر الخاص بك ليعتمدها (Approve) لدى سيرفر Pi
+        onReadyForServerApproval: async function(paymentId) {
+          try {
+            const response = await fetch(`${BACKEND_URL}/api/pi/approve`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ paymentId: paymentId, campaignId: id })
+            });
+            if (!response.ok) throw new Error("رفض السيرفر الموافقة على المعاملة.");
+            console.log("تمت موافقة سيرفرك وسيرفرات Pi بنجاح.");
+          } catch (err) {
+            console.error(err);
+            alert("فشلت خطوة الموافقة القانونية من السيرفر.");
+          }
+        },
+
+        // الخطوة ب: بعد توقيع المستخدم، يتم إرسال التوقيع ومعرف البلوكتشين (txid) للسيرفر لإغلاقها نهائياً (Complete)
+        onReadyForServerCompletion: async function(paymentId, txid) {
+          try {
+            const response = await fetch(`${BACKEND_URL}/api/pi/complete`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ paymentId: paymentId, txid: txid, campaignId: id })
+            });
+
+            if (response.ok) {
+              // تحديث حالة الحملة حياً في المتصفح بعد تأكيد السيرفر المالي
+              const updated = campaigns.map(c => c.id === id ? { ...c, status: "نشطة" } : c);
+              setCampaigns(updated);
+              localStorage.setItem("campaigns", JSON.stringify(updated));
+              calculateStats(updated);
+              
+              alert("🎉 تم الدفع بنجاح! وحملتك الإعلانية أصبحت نشطة وموثقة على الشبكة.");
+            } else {
+              alert("فشل السيرفر في تسوية المعاملة قانونياً.");
+            }
+          } catch (err) {
+            console.error(err);
+            alert("حدث خطأ أثناء إغلاق المعاملة على السيرفر.");
+          }
+        },
+
+        onCancel: function(paymentId) {
+          alert("تم إلغاء عملية الدفع بواسطة الرواد.");
+        },
+        onError: function(error, payment) {
+          console.error("خطأ الدفع التكنولوجي:", error);
+          alert("عذراً، حدث خطأ تكنولوجي أثناء معالجة الدفع.");
+        }
+      });
+
+    } catch (error) {
+      console.error(error);
+      alert("فشل الاتصال ببوابة مدفوعات Pi Network.");
+    }
   }
 
   if (loading) {
@@ -204,7 +277,6 @@ function App() {
   return (
     <div style={{ ...styles.appLayout, flexDirection: isMobile ? "column" : "row" }}>
       
-      {/* القائمة: ستتحول تلقائياً لشريط علوي في الموبايل، وشريط جانبي في الكمبيوتر */}
       <aside style={{ ...styles.sidebar, width: isMobile ? "100%" : "260px", boxSizing: "border-box" }}>
         <div style={styles.brandZone}>
           <h2 style={styles.brandText}>Promo Hub</h2>
@@ -212,38 +284,15 @@ function App() {
         </div>
         
         <nav style={{ ...styles.navMenu, flexDirection: isMobile ? "row" : "column", flexWrap: isMobile ? "wrap" : "nowrap", justifyContent: "center" }}>
-          <button 
-            style={{ ...styles.navItem, ...(currentPage === "dashboard" ? styles.activeNavItem : {}), width: isMobile ? "45%" : "100%" }} 
-            onClick={() => setCurrentPage("dashboard")}
-          >
-            📊 لوحة التحكم
-          </button>
-          <button 
-            style={{ ...styles.navItem, ...(currentPage === "create" ? styles.activeNavItem : {}), width: isMobile ? "45%" : "100%" }} 
-            onClick={() => setCurrentPage("create")}
-          >
-            ➕ إنشاء حملة
-          </button>
-          <button 
-            style={{ ...styles.navItem, ...(currentPage === "campaigns" ? styles.activeNavItem : {}), width: isMobile ? "45%" : "100%" }} 
-            onClick={() => setCurrentPage("campaigns")}
-          >
-            📋 قائمة حملاتك
-          </button>
-          <button 
-            style={{ ...styles.navItem, ...(currentPage === "settings" ? styles.activeNavItem : {}), width: isMobile ? "45%" : "100%" }} 
-            onClick={() => setCurrentPage("settings")}
-          >
-            ⚙️ الإعدادات
-          </button>
+          <button style={{ ...styles.navItem, ...(currentPage === "dashboard" ? styles.activeNavItem : {}), width: isMobile ? "45%" : "100%" }} onClick={() => setCurrentPage("dashboard")}>📊 لوحة التحكم</button>
+          <button style={{ ...styles.navItem, ...(currentPage === "create" ? styles.activeNavItem : {}), width: isMobile ? "45%" : "100%" }} onClick={() => setCurrentPage("create")}>➕ إنشاء حملة</button>
+          <button style={{ ...styles.navItem, ...(currentPage === "campaigns" ? styles.activeNavItem : {}), width: isMobile ? "45%" : "100%" }} onClick={() => setCurrentPage("campaigns")}>📋 قائمة حملاتك</button>
+          <button style={{ ...styles.navItem, ...(currentPage === "settings" ? styles.activeNavItem : {}), width: isMobile ? "45%" : "100%" }} onClick={() => setCurrentPage("settings")}>⚙️ الإعدادات</button>
         </nav>
 
-        <button onClick={logout} style={{ ...styles.logoutButton, marginTop: isMobile ? "15px" : "auto", width: isMobile ? "100%" : "auto" }}>
-          تسجيل الخروج
-        </button>
+        <button onClick={logout} style={{ ...styles.logoutButton, marginTop: isMobile ? "15px" : "auto", width: isMobile ? "100%" : "auto" }}>تسجيل الخروج</button>
       </aside>
 
-      {/* منطقة المحتوى الممتدة بالكامل */}
       <main style={{ ...styles.mainContent, width: "100%", boxSizing: "border-box", padding: isMobile ? "20px" : "40px" }}>
         
         {currentPage === "dashboard" && (
@@ -314,7 +363,6 @@ function App() {
           </div>
         )}
 
-        {/* صفحة الإعدادات */}
         {currentPage === "settings" && (
           <div style={styles.formContainer}>
             <h2 style={styles.pageTitle}>⚙️ الإعدادات</h2>
@@ -329,9 +377,6 @@ function App() {
   );
 }
 
-// ==========================
-// التنسيقات المعدلة لدعم الهواتف والشاشات الكاملة
-// ==========================
 const styles = {
   loadingScreen: { display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#101018", color: "#ffffff" },
   spinner: { width: "40px", height: "40px", border: "4px solid rgba(255,255,255,0.1)", borderTop: "4px solid #6C5CE7", borderRadius: "50%" },
