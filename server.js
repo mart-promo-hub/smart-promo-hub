@@ -1,165 +1,93 @@
 const express = require('express');
 const axios = require('axios');
+const cors = require('cors');
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-// Middleware to parse JSON and URL-encoded bodies
+// تفعيل CORS لكي يتمكن متصفح Pi Browser من التواصل مع السيرفر بدون حجب أمني
+app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-// ==================== إعدادات Pi Network ====================
-const PI_CONFIG = {
-  clientId: "-A4TB3A70xaV8msc-OzXbB_PMhCHqIu5KHbgr_BKS2o",
-  redirectUri: "https://smart-promo-hub.onrender.com/auth/pi/callback"
-};
+// ==========================================
+// ✅ تم إضافة مفتاح الـ API الخاص بتطبيقك بنجاح
+// ==========================================
+const PI_API_KEY = "2wxcnbex5wnmfix6ojbk87hullo5pi8mo1met52sr98vq17nqksdjjnbrbhlicrm"; 
 
-// ==================== مسار استقبال الرد من Pi ====================
-app.get('/auth/pi/callback', async (req, res) => {
-  const { code } = req.query;
+// رابط سيرفر Pi الرسمي للمدفوعات
+const PI_API_URL = "https://api.minepi.com/v2/payments";
 
-  if (!code) {
-    return res.send(`
-      <h1>❌ خطأ في تسجيل الدخول</h1>
-      <p>لم يتم استلام رمز من Pi Network. يرجى المحاولة مرة أخرى.</p>
-      <a href="/">العودة إلى التطبيق</a>
-    `);
-  }
+// ==========================================
+// 1. مسار الموافقة المبدئية (Approve Payment)
+// ==========================================
+app.post('/api/pi/approve', async (req, res) => {
+    const { paymentId, campaignId } = req.body;
 
-  try {
-    const response = await axios.post('https://app.pi-network.com/api/v2/oauth/token', {
-      client_id: PI_CONFIG.clientId,
-      code: code,
-      redirect_uri: PI_CONFIG.redirectUri,
-      grant_type: 'authorization_code'
-    });
+    console.log(`📡 جاري إرسال طلب موافقة مبدئية لعملية الدفع: ${paymentId} الخاصة بالحملة: ${campaignId}`);
 
-    const { access_token, user } = response.data;
+    try {
+        // مراسلة سيرفر Pi لإخبارهم بأن سيرفرك وافق قانونياً على هذه العملية
+        const response = await axios.post(
+            `${PI_API_URL}/${paymentId}/approve`,
+            {},
+            {
+                headers: {
+                    'Authorization': `Key ${PI_API_KEY}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
 
-    res.send(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>تم تسجيل الدخول بنجاح</title>
-          <style>
-            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; direction: rtl; }
-            .container { max-width: 500px; margin: 0 auto; background: #f0f0f0; padding: 30px; border-radius: 15px; }
-            h1 { color: #4ecdc4; }
-            .info { text-align: right; margin: 20px 0; }
-            .info p { margin: 8px 0; }
-            .btn { display: inline-block; padding: 10px 20px; background: #6c5ce7; color: white; text-decoration: none; border-radius: 8px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <h1>✅ تم تسجيل الدخول بنجاح!</h1>
-            <div class="info">
-              <p><strong>🆔 معرف المستخدم:</strong> ${user.id}</p>
-              <p><strong>👤 اسم المستخدم:</strong> ${user.username}</p>
-              <p><strong>📧 البريد الإلكتروني:</strong> ${user.email || 'غير متاح'}</p>
-              <p><strong>🔑 رمز الوصول:</strong> ${access_token.substring(0, 20)}...</p>
-            </div>
-            <a href="/" class="btn">🚀 الذهاب إلى لوحة التحكم</a>
-          </div>
-        </body>
-      </html>
-    `);
-  } catch (error) {
-    console.error('❌ خطأ في تسجيل الدخول:', error.response?.data || error.message);
-    res.send(`
-      <h1>❌ حدث خطأ أثناء تسجيل الدخول</h1>
-      <p>يرجى المحاولة مرة أخرى. إذا استمرت المشكلة، تأكد من إعدادات التطبيق.</p>
-      <a href="/">العودة إلى التطبيق</a>
-    `);
-  }
+        console.log(`✅ تم الموافقة على الدفعة رقم ${paymentId} بنجاح!`);
+        return res.status(200).json({ success: true, data: response.data });
+
+    } catch (error) {
+        console.error("❌ خطأ في دالة Approve:", error.response ? error.response.data : error.message);
+        return res.status(500).json({ error: "فشلت عملية الموافقة من طرف السيرفر" });
+    }
 });
 
-// ==================== مسار معالجة الدفع ====================
-app.post('/api/pay', async (req, res) => {
-  const { amount, memo, user_id } = req.body;
+// ==========================================
+// 2. مسار الإغلاق والتسوية النهائية (Complete Payment)
+// ==========================================
+app.post('/api/pi/complete', async (req, res) => {
+    const { paymentId, txid, campaignId } = req.body;
 
-  if (!amount || !user_id) {
-    return res.status(400).json({ error: 'المبلغ ومعرف المستخدم مطلوبان' });
-  }
+    console.log(`📡 جاري إرسال طلب إغلاق المعاملة: ${paymentId} مع معرف البلوكتشين (txid): ${txid}`);
 
-  try {
-    const mockPayment = {
-      success: true,
-      transaction_id: 'txn_' + Date.now(),
-      amount: amount,
-      status: 'completed'
-    };
+    try {
+        // مراسلة سيرفر Pi لإغلاق المعاملة رسمياً بعد توقيع المستخدم بالبصمة/كلمة السر
+        const response = await axios.post(
+            `${PI_API_URL}/${paymentId}/complete`,
+            { txid: txid },
+            {
+                headers: {
+                    'Authorization': `Key ${PI_API_KEY}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
 
-    res.json(mockPayment);
-  } catch (error) {
-    console.error('❌ خطأ في الدفع:', error);
-    res.status(500).json({ error: 'فشلت عملية الدفع' });
-  }
+        console.log(`🎉 تم إغلاق وتوثيق الدفعة ${paymentId} على البلوكتشين بنجاح للحملة ${campaignId}`);
+        return res.status(200).json({ success: true, data: response.data });
+
+    } catch (error) {
+        console.error("❌ خطأ في دالة Complete:", error.response ? error.response.data : error.message);
+        return res.status(500).json({ error: "فشل إغلاق المعاملة وتسويتها مالياً على الشبكة" });
+    }
 });
 
-// ==================== صفحة سياسة الخصوصية ====================
-app.get('/privacy-policy', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>سياسة الخصوصية</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 40px; direction: rtl; max-width: 700px; margin: 0 auto; }
-          h1 { color: #6c5ce7; }
-          .btn { display: inline-block; padding: 10px 20px; background: #6c5ce7; color: white; text-decoration: none; border-radius: 8px; }
-        </style>
-      </head>
-      <body>
-        <h1>🔒 سياسة الخصوصية</h1>
-        <p>نحن في Smart Promo Hub نلتزم بحماية خصوصية مستخدمينا. لا نقوم بمشاركة بياناتك الشخصية مع أي طرف ثالث دون موافقتك الصريحة.</p>
-        <p>جميع البيانات التي نجمعها تُستخدم فقط لتحسين خدماتنا وتقديم تجربة مخصصة لك.</p>
-        <a href="/" class="btn">🚀 العودة إلى التطبيق</a>
-      </body>
-    </html>
-  `);
-});
-
-// ==================== صفحة شروط الخدمة ====================
-app.get('/terms-of-service', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>شروط الخدمة</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 40px; direction: rtl; max-width: 700px; margin: 0 auto; }
-          h1 { color: #6c5ce7; }
-          .btn { display: inline-block; padding: 10px 20px; background: #6c5ce7; color: white; text-decoration: none; border-radius: 8px; }
-        </style>
-      </head>
-      <body>
-        <h1>📜 شروط الخدمة</h1>
-        <p>باستخدامك لتطبيق Smart Promo Hub، فإنك توافق على الالتزام بالشروط التالية:</p>
-        <ul>
-          <li>جميع الحملات الإعلانية التي تنشئها عبر المنصة هي مسؤوليتك بالكامل.</li>
-          <li>نحن نقدم المنصة كخدمة، ولا نتحمل مسؤولية أي خسائر ناتجة عن استخدامك لها.</li>
-          <li>نحتفظ بالحق في تحديث هذه الشروط في أي وقت، وسيتم إخطارك بأي تغييرات جوهرية.</li>
-        </ul>
-        <a href="/" class="btn">🚀 العودة إلى التطبيق</a>
-      </body>
-    </html>
-  `);
-});
-
-// ==================== خدمة الملفات الثابتة ====================
+// ==========================================
+// إعدادات تشغيل واجهة React (Frontend) من السيرفر
+// ==========================================
 app.use(express.static(path.join(__dirname, 'build')));
 
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+    res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
-// ==================== تشغيل الخادم ====================
+// تشغيل السيرفر على المنفذ المحدد من قِبل Render
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`✅ الخادم يعمل على المنفذ ${PORT}`);
-  console.log(`🔗 رابط التطبيق: http://localhost:${PORT}`);
+    console.log(`🚀 السيرفر الخلفي المطور يعمل بنجاح ومستعد لمعالجة مدفوعات Pi على المنفذ ${PORT}`);
 });
