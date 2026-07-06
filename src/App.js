@@ -27,7 +27,7 @@ function App() {
     type: "Text"
   });
 
-  // ✅ تم ضبط الرابط ليتجه إلى سيرفر الـ Node.js الخاص بك المرفوع على Render
+  // ✅ رابط السيرفر المرفوع على Render لتلقي عمليات التوثيق والموافقة
   const BACKEND_URL = "https://smart-promo-hub.onrender.com";
 
   // مراقبة حجم الشاشة للتجاوب مع الهواتف الذكية
@@ -80,7 +80,7 @@ function App() {
     try {
       await window.Pi.init({
         version: "2.0",
-        sandbox: true // اتركه true لفحص المعاملات بالعملات الوهمية (Testnet)، وغيره إلى false للإنتاج الحقيقي مستقبلاً
+        sandbox: true // اتركه true للفحص على الـ Testnet
       });
       setPiReady(true);
       setLoading(false);
@@ -93,7 +93,6 @@ function App() {
   // تسجيل الدخول والتوثيق
   async function login() {
     if (!piReady) {
-      // مستخدم افتراضي للتجربة خارج متصفح Pi Browser
       const mockUser = { username: "alialihashed77" };
       setUser(mockUser);
       localStorage.setItem("piUser", JSON.stringify(mockUser));
@@ -116,7 +115,7 @@ function App() {
     setUser(null);
   }
 
-  // معالجة المدفوعات المعلقة التي بدأت ولم تكتمل لأي سبب تقني
+  // معالجة المدفوعات المعلقة
   function onIncompletePaymentFound(payment) {
     console.log("تم رصد معاملة معلقة وغير مكتملة:", payment);
     fetch(`${BACKEND_URL}/api/pi/complete`, {
@@ -184,7 +183,7 @@ function App() {
   }
 
   // ========================================================
-  // 🔥 دالة الدفع التي تستدعي محفظة الرواد وتمرر التوثيق للسيرفر
+  // 🔥 دالة الدفع واستدعاء المحفظة والتواصل الآمن مع السيرفر الخلفي
   // ========================================================
   async function payWithPi(id, amount) {
     if (!piReady || !window.Pi) {
@@ -198,7 +197,6 @@ function App() {
         memo: `تمويل حملة إعلانية رقم: ${id}`,
         metadata: { campaignId: id },
       }, {
-        // الخطوة الأولى: تمرير المعاملة لسيرفرك الخاص ليعتمدها (Approve) لدى سيرفر Pi الرسمي
         onReadyForServerApproval: async function(paymentId) {
           try {
             const response = await fetch(`${BACKEND_URL}/api/pi/approve`, {
@@ -214,7 +212,6 @@ function App() {
           }
         },
 
-        // الخطوة الثانية: بعد أن يوقع الرائد المعاملة بمحفظته، يتم إغلاق وتوثيق العملية (Complete)
         onReadyForServerCompletion: async function(paymentId, txid) {
           try {
             const response = await fetch(`${BACKEND_URL}/api/pi/complete`, {
@@ -224,7 +221,6 @@ function App() {
             });
 
             if (response.ok) {
-              // تحديث حالة الحملة لتصبح "نشطة" فور استلام التأكيد المالي
               const updated = campaigns.map(c => c.id === id ? { ...c, status: "نشطة" } : c);
               setCampaigns(updated);
               localStorage.setItem("campaigns", JSON.stringify(updated));
@@ -255,7 +251,6 @@ function App() {
     }
   }
 
-  // شاشة التحميل التمهيدية
   if (loading) {
     return (
       <div style={styles.loadingScreen}>
@@ -265,7 +260,6 @@ function App() {
     );
   }
 
-  // واجهة تسجيل الدخول إذا لم يتم التحقق
   if (!user) {
     return (
       <div style={styles.loginContainer}>
@@ -281,7 +275,6 @@ function App() {
   return (
     <div style={{ ...styles.appLayout, flexDirection: isMobile ? "column" : "row" }}>
       
-      {/* القائمة الجانبية أو العلوية في الموبايل */}
       <aside style={{ ...styles.sidebar, width: isMobile ? "100%" : "260px", boxSizing: "border-box" }}>
         <div style={styles.brandZone}>
           <h2 style={styles.brandText}>Promo Hub</h2>
@@ -298,7 +291,6 @@ function App() {
         <button onClick={logout} style={{ ...styles.logoutButton, marginTop: isMobile ? "15px" : "auto", width: isMobile ? "100%" : "auto" }}>تسجيل الخروج</button>
       </aside>
 
-      {/* منطقة عرض الصفحات الرئيسية */}
       <main style={{ ...styles.mainContent, width: "100%", boxSizing: "border-box", padding: isMobile ? "20px" : "40px" }}>
         
         {currentPage === "dashboard" && (
@@ -383,7 +375,6 @@ function App() {
   );
 }
 
-// التنسيقات الرائعة والمتجاوبة مع الوضع المظلم (Dark Mode)
 const styles = {
   loadingScreen: { display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#101018", color: "#ffffff" },
   spinner: { width: "40px", height: "40px", border: "4px solid rgba(255,255,255,0.1)", borderTop: "4px solid #6C5CE7", borderRadius: "50%" },
